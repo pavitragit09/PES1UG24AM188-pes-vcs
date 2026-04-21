@@ -6,7 +6,7 @@
 //   parent <64-char-hex-hash>        ← omitted for the first commit
 //   author <name> <unix-timestamp>
 //   committer <name> <unix-timestamp>
-//
+//# add comment: // tree logic added
 //   <commit message>
 //
 // Note: there is a blank line between the headers and the message.
