@@ -1,5 +1,5 @@
 // index.c — Staging area implementation
-//
+// phase commit  3 extra 1
 // Text format of .pes/index (one entry per line, sorted by path):
 //
 //   <mode-octal> <64-char-hex-hash> <mtime-seconds> <size> <path>
