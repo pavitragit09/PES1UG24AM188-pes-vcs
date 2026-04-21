@@ -6,7 +6,7 @@
 //   parent <64-char-hex-hash>        ← omitted for the first commit
 //   author <n> <unix-timestamp>
 //   committer <n> <unix-timestamp>
-//
+//helslo
 //   <commit message>
 //
 // Note: there is a blank line between the headers and the message.
