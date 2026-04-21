@@ -137,12 +137,10 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
     }
 
     *id_out = id;
-    return 0;
-}
-
+    return 0;}
 // Read an object from the store.
 int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_t *len_out) {
-    // Step 1: Build the file path from the hash
+    // Step 1: Get the file path
     char path[512];
     object_path(id, path, sizeof(path));
 
@@ -151,49 +149,45 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
     if (!f) return -1;
 
     fseek(f, 0, SEEK_END);
-    long file_size = ftell(f);
+    size_t file_size = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    if (file_size <= 0) { fclose(f); return -1; }
-
-    uint8_t *buf = malloc(file_size);
-    if (!buf) { fclose(f); return -1; }
-
-    if ((long)fread(buf, 1, file_size, f) != file_size) {
-        fclose(f); free(buf); return -1;
+    uint8_t *file_buf = malloc(file_size);
+    if (!file_buf) { fclose(f); return -1; }
+    if (fread(file_buf, 1, file_size, f) != file_size) {
+        fclose(f); free(file_buf); return -1;
     }
     fclose(f);
 
-    // Step 3: Verify integrity — recompute hash and compare to expected
+    // Step 3: Integrity check — recompute hash and compare to filename
     ObjectID computed;
-    compute_hash(buf, file_size, &computed);
+    compute_hash(file_buf, file_size, &computed);
     if (memcmp(computed.hash, id->hash, HASH_SIZE) != 0) {
-        free(buf);
-        return -1;  // Corruption detected
+        free(file_buf);
+        return -1; // Corruption detected!
     }
 
-    // Step 4: Find the '\0' separator between header and data
-    uint8_t *null_pos = memchr(buf, '\0', file_size);
-    if (!null_pos) { free(buf); return -1; }
+    // Step 4: Find the \0 that separates header from data
+    uint8_t *null_byte = memchr(file_buf, '\0', file_size);
+    if (!null_byte) { free(file_buf); return -1; }
 
-    // Step 5: Parse type from header (e.g., "blob 16")
-    if (strncmp((char *)buf, "blob", 4) == 0)        *type_out = OBJ_BLOB;
-    else if (strncmp((char *)buf, "tree", 4) == 0)   *type_out = OBJ_TREE;
-    else if (strncmp((char *)buf, "commit", 6) == 0) *type_out = OBJ_COMMIT;
-    else { free(buf); return -1; }
+    // Step 5: Parse the type from the header (e.g., "blob 16")
+    if (strncmp((char *)file_buf, "blob", 4) == 0)        *type_out = OBJ_BLOB;
+    else if (strncmp((char *)file_buf, "tree", 4) == 0)   *type_out = OBJ_TREE;
+    else if (strncmp((char *)file_buf, "commit", 6) == 0) *type_out = OBJ_COMMIT;
+    else { free(file_buf); return -1; }
 
-    // Step 6: Extract the data portion (after the '\0')
-    uint8_t *data_start = null_pos + 1;
-    size_t data_len = file_size - (data_start - buf);
+    // Step 6: Extract data portion (everything after the \0)
+    uint8_t *data_start = null_byte + 1;
+    size_t data_len = file_size - (data_start - file_buf);
 
-    uint8_t *out = malloc(data_len + 1);  // +1 for safety null terminator
-    if (!out) { free(buf); return -1; }
-    memcpy(out, data_start, data_len);
-    out[data_len] = '\0';
+    uint8_t *out_buf = malloc(data_len);
+    if (!out_buf) { free(file_buf); return -1; }
+    memcpy(out_buf, data_start, data_len);
 
-    *data_out = out;
+    *data_out = out_buf;
     *len_out = data_len;
 
-    free(buf);
+    free(file_buf);
     return 0;
 }
